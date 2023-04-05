@@ -80,13 +80,14 @@ def generate():
 
     print("request:",data['input'])
 
-    imgs_res_list = generate_img(data['input'])
+    #imgs_res_list = generate_img(data['input'])
+    time.sleep(7)
 
     res_data = {
         "code": 200,
          "msg": "生成成功",
         "data": {
-            "output": imgs_res_list
+            "output": [data.get('input').get('image'),data.get('input').get('image')]
         }
     }
 
