@@ -1,20 +1,15 @@
 import json
 import uuid
-from qiniu import Auth, put_file, etag
-from tool.mysql_tool import MysqlTool
-from dbutils.pooled_db import PooledDB
+from qiniu import Auth, put_file
 import time
 from threading import Thread
 import webuiapi
-import base64
+import requests
 from PIL import Image
 
-import pymysql
 BUCKED_NAME = "aigcute"
 FILE_PATH = "./result/"
 DOMAIN_NAME = 'qiniu.aigcute.com'
-
-import requests
 
 SERVER_HOST = "http://127.0.0.1:5001/"
 task_url = SERVER_HOST + "v1/get_task"
@@ -25,9 +20,6 @@ headers = {
 
 
 def design(img_url,prompt):
-    # create API client
-    api = webuiapi.WebUIApi()
-
     # create API client with custom host, port
     api = webuiapi.WebUIApi(host='127.0.0.1', port=7860)
     #api = webuiapi.WebUIApi(sampler='Euler a', steps=20)
@@ -95,8 +87,6 @@ def upload_img(file_name):
         return True, img_url
     else:
         return False,None
-
-
 
 def task(num):
     while True:
