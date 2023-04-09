@@ -42,7 +42,7 @@ def test_get_individual_request_404():
 
 def test_add_new_record():
     "Test adding a new record"
-    payload = {'title': 'Good & Bad Book', 'email': 'testuser3@test.com'}
+    payload = {'title': 'Good & Bad Book', 'email': 'testuser3@result.com'}
     response = requests.post('%s/request' % (BASE_URL), json=payload)
     NewUUID.value = str(response.json()['id'])
     assert_true(response.status_code == 201)
@@ -58,7 +58,7 @@ def test_get_new_record():
 def test_edit_new_record_title():
     "Test editing the new records title"
     payload = {'title': 'edited Good & Bad Book',
-               'email': 'testuser3@test.com'}
+               'email': 'testuser3@result.com'}
     response = requests.put('%s/request/%s' %
                             (BASE_URL, NewUUID.value), json=payload)
     assert_true(response.json()['title'] == "edited Good & Bad Book")
@@ -67,10 +67,10 @@ def test_edit_new_record_title():
 def test_edit_new_record_email():
     "Test editing the new records email"
     payload = {'title': 'edited Good & Bad Book',
-               'email': 'testuser4@test.com'}
+               'email': 'testuser4@result.com'}
     response = requests.put('%s/request/%s' %
                             (BASE_URL, NewUUID.value), json=payload)
-    assert_true(response.json()['email'] == "testuser4@test.com")
+    assert_true(response.json()['email'] == "testuser4@result.com")
 
 
 def test_add_new_record_bad_email_format():
@@ -82,7 +82,7 @@ def test_add_new_record_bad_email_format():
 
 def test_add_new_record_bad_title_key():
     "Test adding a new record with a bad title"
-    payload = {'badTitleKey': 'Good & Bad Book', 'email': 'testuser4@test.com'}
+    payload = {'badTitleKey': 'Good & Bad Book', 'email': 'testuser4@result.com'}
     response = requests.post('%s/request' % (BASE_URL), json=payload)
     assert_true(response.status_code == 400)
 
@@ -96,14 +96,14 @@ def test_add_new_record_no_email_key():
 
 def test_add_new_record_no_title_key():
     "Test adding a new record no title"
-    payload = {'email': 'testuser5@test.com'}
+    payload = {'email': 'testuser5@result.com'}
     response = requests.post('%s/request' % (BASE_URL), json=payload)
     assert_true(response.status_code == 400)
 
 
 def test_add_new_record_unicode_title():
     "Test adding a new record with a unicode title"
-    payload = {'title': '▚Ⓜ⌇⇲', 'email': 'testuser5@test.com'}
+    payload = {'title': '▚Ⓜ⌇⇲', 'email': 'testuser5@result.com'}
     response = requests.post('%s/request' % (BASE_URL), json=payload)
     assert_true(response.ok)
 

@@ -1,4 +1,3 @@
-import time
 import uuid
 from qiniu import Auth, put_file, etag
 from tool.mysql_tool import MysqlTool
@@ -11,7 +10,7 @@ from PIL import Image
 
 import pymysql
 BUCKED_NAME = "aigcute"
-FILE_PATH = "test/result/"
+FILE_PATH = "./result/"
 DOMAIN_NAME = 'qiniu.aigcute.com'
 
 pool = PooledDB(
@@ -74,13 +73,13 @@ def design(img_url,prompt):
                          seed=-1,controlnet_units=[unit1])
     print(result.images)
     res_img = result.images[0]
-    # save_encoded_image(result['images'][0], 'test/result/'+ str(int(time.time())) + '.png')
+    # save_encoded_image(result['images'][0], 'result/result/'+ str(int(time.time())) + '.png')
     des_img = '{}.png'.format(uuid.uuid4())
     res_img.save(FILE_PATH + str(des_img))
     print("cost time:", int(time.time() - t1))
     cn = webuiapi.ControlNetInterface(api)
     print(cn.model_list())
-    print("cost time:",int(time.time() - t1))
+    print("cost time:", int(time.time() - t1))
     return des_img
 
 def upload_img(file_name):
