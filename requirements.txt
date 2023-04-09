@@ -11,3 +11,4 @@ uuid==1.30
 flask-swagger-ui==3.20.9
 pymysql
 DBUtils
+qiniu

@@ -1,4 +1,6 @@
- create table SD_TASK
+ CREATE DATABASE AIGC_TASK;
+
+ create table AIGC_TASK.SD_TASK
         (
             id           int unsigned auto_increment primary key,
             requestid    varchar(128)                              not null,

@@ -17,7 +17,7 @@ pool = PooledDB(
             port=3306,  # 数据库端口号
             user='root',  # 数据库用户名
             password='mysql123456',  # 数据库密码
-            database='sd_task',  # 数据库名称
+            database='AIGC_TASK',  # 数据库名称
             charset='utf8mb4'  # 数据库字符集
         )
 
@@ -92,7 +92,7 @@ def generate():
 
     sqltool = MysqlTool(pool)
     print("request:",data['input'])
-    obj = sqltool.get_task(data.get('requestid'))
+    obj = sqltool.get_task_by_requestid(data.get('requestid'))
     if (obj is None):
         new_task = {}
         new_task["requestid"] = data.get('requestid')
