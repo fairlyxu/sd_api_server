@@ -1,14 +1,27 @@
 """The Endpoints to manage the BOOK_REQUESTS"""
-import uuid
+import pymysql
 import requests
 import json
 import time
-from datetime import datetime, timedelta
 from flask import jsonify, abort, request, Blueprint
+from tool.mysql_tool import MysqlTool
+from dbutils.pooled_db import PooledDB
+pool = PooledDB(
+            creator=pymysql,  # 使用pymysql作为连接的创建者
+            maxconnections=20,  # 连接池中最大连接数
+            mincached=2,  # 连接池中最小空闲连接数
+            maxcached=20,  # 连接池中最大空闲连接数
+            maxshared=20,  # 连接池中最大共享连接数
+            blocking=True,  # 如果连接池达到最大连接数，是否等待连接释放后再获取新连接
+            host='localhost',  # 数据库主机名
+            port=3306,  # 数据库端口号
+            user='root',  # 数据库用户名
+            password='mysql123456',  # 数据库密码
+            database='sd_task',  # 数据库名称
+            charset='utf8mb4'  # 数据库字符集
+        )
 
-from validate_email import validate_email
 REQUEST_API = Blueprint('request_api', __name__)
-
 
 def get_blueprint():
     """Return the blueprint for the main app module"""
@@ -60,17 +73,16 @@ def generate_img(data):
 
 @REQUEST_API.route('/v1/generate', methods=['POST'])
 def generate():
-    """Create a book request record
-    @param email: post : the requesters email address
-    @param title: post : the title of the book requested
-    @return: 201: a new_uuid as a flask/response object \
-    with application/json mimetype.
-    @raise 400: misunderstood request
-    """
+    msg = ""
+    code = 200
+    output = []
+
     if not request.get_json():
         abort(400)
     data = request.get_json(force=True)
 
+    if not data.get('requestid'):
+        abort(400)
     if not data.get('input'):
         abort(400)
     if not data.get('input').get('image'):
@@ -78,16 +90,35 @@ def generate():
     if not data.get('input').get('prompt'):
         abort(400)
 
+    sqltool = MysqlTool(pool)
     print("request:",data['input'])
+    obj = sqltool.get_task(data.get('requestid'))
+    if (obj is None):
+        new_task = {}
+        new_task["requestid"] = data.get('requestid')
+        new_task["image"] = data.get('input').get('image') #data.get('image')
+        new_task["prompt"] = data.get('input').get('prompt')#data.get('','')
+        new_task["a_prompt"] = data.get('input').get('a_prompt','')
+        new_task["n_prompt"] = data.get('input').get('n_prompt', '')
+        sqltool.create_task(new_task)
+        time.sleep(5)
+        tmp_obj = sqltool.get_task_by_requestid(data.get('requestid'))
+        print("tmp_obj",tmp_obj)
+        obj = tmp_obj
 
-    #imgs_res_list = generate_img(data['input'])
-    time.sleep(7)
+    if (obj["res_img1"] and obj["res_img2"]):
+        if (obj["res_img1"] != "" and obj["res_img2"]):
+            output = [obj["res_img1"], obj["res_img2"]]
+            msg = "生成成功"
+    else:
+        code = 100
+        msg = "排队中"
 
     res_data = {
-        "code": 200,
-         "msg": "生成成功",
+        "code": code,
+        "msg": msg,
         "data": {
-            "output": [data.get('input').get('image'),data.get('input').get('image')]
+            "output": output
         }
     }
 

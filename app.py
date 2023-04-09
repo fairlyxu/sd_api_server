@@ -53,7 +53,7 @@ def handle_500_error(_error):
 if __name__ == '__main__':
 
     PARSER = argparse.ArgumentParser(
-        description="Seans-Python-Flask-REST-Boilerplate")
+        description="sd server")
 
     PARSER.add_argument('--debug', action='store_true',
                         help="Use flask debug/dev mode with file change reloading")
