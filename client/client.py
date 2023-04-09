@@ -1,3 +1,4 @@
+import json
 import uuid
 from qiniu import Auth, put_file, etag
 from tool.mysql_tool import MysqlTool
@@ -13,20 +14,16 @@ BUCKED_NAME = "aigcute"
 FILE_PATH = "./result/"
 DOMAIN_NAME = 'qiniu.aigcute.com'
 
-pool = PooledDB(
-            creator=pymysql,  # 使用pymysql作为连接的创建者
-            maxconnections=20,  # 连接池中最大连接数
-            mincached=2,  # 连接池中最小空闲连接数
-            maxcached=20,  # 连接池中最大空闲连接数
-            maxshared=20,  # 连接池中最大共享连接数
-            blocking=True,  # 如果连接池达到最大连接数，是否等待连接释放后再获取新连接
-            host='localhost',  # 数据库主机名
-            port=3306,  # 数据库端口号
-            user='root',  # 数据库用户名
-            password='mysql123456',  # 数据库密码
-            database='sd_task',  # 数据库名称
-            charset='utf8mb4'  # 数据库字符集
-        )
+import requests
+
+SERVER_HOST = "http://127.0.0.1:5001/"
+task_url = SERVER_HOST + "v1/get_task"
+update_task_url = SERVER_HOST + "v1/update_task"
+headers = {
+    "Content-Type": "application/json"
+}
+
+
 def design(img_url,prompt):
     # create API client
     api = webuiapi.WebUIApi()
@@ -102,33 +99,38 @@ def upload_img(file_name):
 
 
 def task(num):
-    dbtool = MysqlTool(pool)
     while True:
-        task = dbtool.get_task_by_status(1)
-        if task is None:
-            return
-        task['status'] = 0
-        dbtool.update_task(task)
-        #调用画图
-        res_img = design(task['image'])
-        res, des_img_url = upload_img(res_img)
-        # 上传七牛云并且更新数据库
-        if res:
-            task['status'] = 2
-            task['res_img1'] = des_img_url
-            task['res_img2'] = des_img_url
-        else:
-            task['status'] = 1
-        dbtool.update_task(task)
+        task_request = requests.request("GET", task_url, headers=headers)
+        response = json.loads(task_request.text)
+        if response["code"] == 200:
+            task = response["data"]
+            if task is not None:
+                image = task["image"]
+                prompt = task["prompt"]
+                print(image, prompt)
+                # 调用画图
+                res_img = design(task['image'])
+                res, des_img_url = upload_img(res_img)
+                # 上传七牛云并且更新数据库
+                if res:
+                    task['status'] = 2
+                    task['res_img1'] = des_img_url
+                    task['res_img2'] = des_img_url
+                else:
+                    task['status'] = 1
+                update_response = requests.request("POST", update_task_url, json=task, headers=headers)
+                print("update_task:",update_response)
         print(num, "--->", res)
+
 
     dbtool.close_connect()
 
-
-
 if __name__ == "__main__":
+
     for i in range(3):
         t = Thread(target=task, args=(i,))
         t.start()
-        time.sleep(1)
+        time.sleep(2)
+
+
 

@@ -28,7 +28,7 @@ class MysqlTool:
             # 执行sql语句
             cursor.execute("select * from SD_TASK where requestid='%s'" % requestid)
             # 提交到数据库执行
-            print("查询成功！！！！")
+            print("get_task_by_requestid 查询成功！！！！")
             return cursor.fetchall()[0]
         except:
             # 如果发生错误则回滚
@@ -40,10 +40,11 @@ class MysqlTool:
         cursor = self.connect.cursor(cursor=pymysql.cursors.DictCursor)
         try:
             # 执行sql语句
-            cursor.execute("select * from SD_TASK where status=%d" % status)
+            cursor.execute("select * from SD_TASK where status=%d" % (status))
             # 提交到数据库执行
-            print("查询成功！！！！")
-            return cursor.fetchall()[0]
+            res = cursor.fetchall()
+            print("get_task_by_status 查询成功！！！！", res)
+            return res[0]
         except:
             print("get_task_by_status error~")
 
