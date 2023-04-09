@@ -9,8 +9,8 @@ from PIL import Image
 
 BUCKED_NAME = "aigcute"
 FILE_PATH = "./result/"
+ORIGIN_FILE_PATH = "./origin/"
 DOMAIN_NAME = 'qiniu.aigcute.com'
-
 SERVER_HOST = "http://127.0.0.1:5001/"
 task_url = SERVER_HOST + "v1/get_task"
 update_task_url = SERVER_HOST + "v1/update_task"
@@ -23,9 +23,12 @@ def design(img_url,prompt):
     # create API client with custom host, port
     api = webuiapi.WebUIApi(host='127.0.0.1', port=7860)
     #api = webuiapi.WebUIApi(sampler='Euler a', steps=20)
-
     t1 = time.time()
-    img = Image.open(img_url)
+    picture_name = img_url.split('/')[-1]  # 提取图片url后缀
+    reponse = requests.get(img_url)
+    with open(ORIGIN_FILE_PATH + '/' + picture_name, 'wb') as f:
+        f.write(reponse.content)
+    img = Image.open(picture_name)
     unit1 = webuiapi.ControlNetUnit(input_image=img, module='canny', model='control_sd15_canny [fef5e48e]')
     result = api.img2img(images=[img],
                          resize_mode=0,
@@ -62,7 +65,6 @@ def design(img_url,prompt):
                          seed=-1,controlnet_units=[unit1])
     print(result.images)
     res_img = result.images[0]
-    # save_encoded_image(result['images'][0], 'result/result/'+ str(int(time.time())) + '.png')
     des_img = '{}.png'.format(uuid.uuid4())
     res_img.save(FILE_PATH + str(des_img))
     print("cost time:", int(time.time() - t1))
@@ -81,7 +83,7 @@ def upload_img(file_name):
              secret_key='STOqHj_jpEjG01_Q-YfH8eGpLqtE3s3gBQMP7n6A')
     token = q.upload_token(BUCKED_NAME)
     # 指定图片名称
-    ret, info = put_file(token, file_name, FILE_PATH)
+    ret, info = put_file(token, "RES_" + file_name, FILE_PATH + file_name)
     if info.status_code == 200:
         img_url = DOMAIN_NAME + '/' + ret.get('key')
         return True, img_url
