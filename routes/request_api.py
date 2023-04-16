@@ -1,6 +1,5 @@
 
 import pymysql
-import time
 from flask import jsonify, abort, request, Blueprint
 from tool.mysql_tool import MysqlTool
 from dbutils.pooled_db import PooledDB
@@ -14,7 +13,7 @@ pool = PooledDB(
             host='localhost',  # 数据库主机名
             port=3306,  # 数据库端口号
             user='root',  # 数据库用户名
-            password='mysql123456',  # 数据库密码
+            password='wangqiang123',  # 数据库密码
             database='AIGC_TASK',  # 数据库名称
             charset='utf8mb4'  # 数据库字符集
         )
@@ -49,18 +48,16 @@ def generate():
         if (obj is None):
             new_task = {}
             new_task["requestid"] = data.get('requestid')
-            new_task["image"] = data.get('input').get('image') #data.get('image')
-            new_task["prompt"] = data.get('input').get('prompt')#data.get('','')
+            new_task["image"] = data.get('input').get('image')
+            new_task["prompt"] = data.get('input').get('prompt')
             new_task["a_prompt"] = data.get('input').get('a_prompt','')
             new_task["n_prompt"] = data.get('input').get('n_prompt', '')
             dbtool.create_task(new_task)
-            time.sleep(5)
             tmp_obj = dbtool.get_task_by_requestid(data.get('requestid'))
             obj = tmp_obj
 
-        if (obj["res_img1"] and obj["res_img2"]):
-            if (obj["res_img1"] != "" and obj["res_img2"]):
-                output = [obj["res_img1"], obj["res_img2"]]
+        if (obj["res_img2"] and len(obj["res_img2"]) >0):
+                output = obj["res_img2"].split(',')
                 msg = "生成成功"
         else:
             code = 100

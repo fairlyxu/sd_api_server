@@ -1,4 +1,6 @@
 # 导入pymysql模块import pymysql
+import traceback
+
 import pymysql
 
 # 创建连接MYSQL的类
@@ -42,11 +44,13 @@ class MysqlTool:
             # 执行sql语句
             cursor.execute("select * from SD_TASK where status=%d" % (status))
             # 提交到数据库执行
-            res = cursor.fetchall()
+            res = cursor.fetchone()
             print("get_task_by_status 查询成功！！！！", res)
-            return res[0]
-        except:
-            print("get_task_by_status error~")
+            if(res):
+                return res
+        except Exception as e:
+            traceback.print_exc()
+            print("get_task_by_status error~:",e)
 
 
 
@@ -73,21 +77,24 @@ class MysqlTool:
 
     # 数据库更新操作
     def update_task(self, obj):
+        print("sql update_task :",obj)
         if ('status' not in obj or obj['status'] is None):
+            print(" status is null" )
             return
         if ('requestid' not in obj or obj['requestid'] is None):
+            print(" requestid is null")
             return
         # 使用cursor()方法获取操作游标
         cursor = self.connect.cursor()
         sql_con = 'status = %d ' %(obj['status'])
         if ('res_img1' in obj and obj['res_img1'] is not None):
-            sql_con += 'res_img1 = ' + obj['res_img1']
+            sql_con += ", res_img1 = '" + obj['res_img1'] + "'"
         if ('res_img2' in obj and obj['res_img2'] is not None):
-            sql_con += 'res_img2 = ' + obj['res_img2']
+            sql_con += ", res_img2 = '" + obj['res_img2'] + "'"
 
         # SQL 更新语句
         sql = "UPDATE SD_TASK SET " + sql_con + " WHERE requestid = '%s'" % (obj['requestid'])
-        print(sql)
+
         try:
             # 执行SQL语句
             cursor.execute(sql)
@@ -110,7 +117,6 @@ if __name__ == "__main__":
     # 定义变量
     try:
         obj = {'requestid': '1234567ddd', 'image': 'https://img2.baidu.com/it/u=4251773486,3026766425&fm=253&app=138&size=w931&n=0&f=JPEG&fmt=auto?sec=1680454800&t=97c57b5295b3a0bb8ae66e95e4e442d3', 'prompt': 'a modern bedroom', 'a_prompt': 'best quality, extremely detailed, photo from Pinterest, interior, cinematic photo, ultra-detailed, ultra-realistic, award-winning', 'n_prompt': 'longbody, lowres, bad anatomy, bad hands, missing fingers, extra digit, fewer digits, cropped, worst quality, low quality'}
-
         db = MysqlTool()
         print("MySQL connection finished.")
         db.find_version()
