@@ -6,9 +6,10 @@ import pymysql
 # 创建连接MYSQL的类
 class MysqlTool:
     # 初始化变量
-    def __init__(self,pool):
+    def __init__(self, pool, dbname="SD_TASK"):
         # 创建数据库连接
         self.connect = pool.connection()
+        self.dbname = dbname
 
     # 查询数据库的版本
     def find_version(self):
@@ -27,9 +28,8 @@ class MysqlTool:
         # 使用cursor()方法获取操作游标
         cursor = self.connect.cursor(cursor=pymysql.cursors.DictCursor)
         try:
-            # 执行sql语句
-            cursor.execute("select * from SD_TASK where requestid='%s'" % requestid)
-            # 提交到数据库执行
+            cursor.execute("select * from %s where requestid='%s'" %(self.dbname,requestid))
+
             print("get_task_by_requestid 查询成功！！！！")
             return cursor.fetchall()[0]
         except:
@@ -41,16 +41,14 @@ class MysqlTool:
         # 使用cursor()方法获取操作游标
         cursor = self.connect.cursor(cursor=pymysql.cursors.DictCursor)
         try:
-            # 执行sql语句
-            cursor.execute("select * from SD_TASK where status=%d" % (status))
-            # 提交到数据库执行
+            cursor.execute("select * from %s where status=%d" % (self.dbname, status))
             res = cursor.fetchone()
             print("get_task_by_status 查询成功！！！！", res)
-            if(res):
+            if res:
                 return res
         except Exception as e:
             traceback.print_exc()
-            print("get_task_by_status error~:",e)
+            print("get_task_by_status error~:", e)
 
 
 
@@ -64,6 +62,25 @@ class MysqlTool:
         sql = """INSERT INTO SD_TASK(requestid,image, prompt, a_prompt, n_prompt,status)
                  VALUES('%s', '%s','%s', '%s', '%s',1)""" % (
             obj['requestid'], obj['image'], obj['prompt'], obj['a_prompt'], obj['n_prompt'])
+        print(sql)
+        try:
+            # 执行sql语句
+            cursor.execute(sql)
+            # 提交到数据库执行
+            self.connect.commit()
+        except:
+            # 如果发生错误则回滚
+            self.connect.rollback()
+        print("插入成功！！！！")
+
+    def create_task_v2(self, obj):
+        # 使用cursor()方法获取操作游标
+        cursor = self.connect.cursor()
+        print("obj:", obj)
+
+        # SQL 插入语句
+        sql = """INSERT INTO %s (requestid,image, normal_param, control_param,status)
+                    VALUES('%s', '%s','%s', '%s',1)""" % (self.dbname, obj['requestid'], obj['image'], obj['normal_param'], obj['control_param'])
         print(sql)
         try:
             # 执行sql语句
@@ -93,7 +110,7 @@ class MysqlTool:
             sql_con += ", res_img2 = '" + obj['res_img2'] + "'"
 
         # SQL 更新语句
-        sql = "UPDATE SD_TASK SET " + sql_con + " WHERE requestid = '%s'" % (obj['requestid'])
+        sql = "UPDATE %s SET " + sql_con + " WHERE requestid = '%s'" % (self.dbname,obj['requestid'])
 
         try:
             # 执行SQL语句
