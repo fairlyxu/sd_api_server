@@ -1,50 +1,112 @@
-import json
+# -*- coding: utf-8 -*-
+import os
 import uuid
 from qiniu import Auth, put_file
 import time
 from threading import Thread
 import webuiapi
-import requests
 from PIL import Image
+import requests
+import random
+import json
+from hashlib import md5
 
 BUCKED_NAME = "aigcute"
 FILE_PATH = './result/'
 DOMAIN_NAME = 'qiniu.aigcute.com'
 ORIGIN_FILE_PATH = './origin/'
 SERVER_HOST = "http://101.132.254.70:5001/"
-task_url = SERVER_HOST + "v1/get_task"
-update_task_url = SERVER_HOST + "v1/update_task"
+task_url = SERVER_HOST + "v2/get_task"
+update_task_url = SERVER_HOST + "v2/update_task"
 headers = {
     "Content-Type": "application/json"
 }
 
 
-def design(img_url, prompt):
+
+def translate(query):
+    def make_md5(s, encoding='utf-8'):
+        return md5(s.encode(encoding)).hexdigest()
+
+    translate_res = ""
+    if query == None or query =="" or query =="null"  or len(query) < 1:
+        return translate_res
+    # Set your own appid/appkey.
+    appid = '20231013001845675'
+    appkey = 'FmseV6MYnw8gzQQV09Vv'
+    from_lang = 'auto'
+    to_lang = 'en'
+    endpoint = 'http://api.fanyi.baidu.com'
+    path = '/api/trans/vip/translate'
+    url = endpoint + path
+    # Generate salt and sign
+
+    salt = random.randint(32768, 65536)
+    sign = make_md5(appid + query + str(salt) + appkey)
+
+    # Build request
+    headers = {'Content-Type': 'application/x-www-form-urlencoded'}
+    payload = {'appid': appid, 'q': query, 'from': from_lang, 'to': to_lang, 'salt': salt, 'sign': sign}
+
+    try :
+        # Send request
+        r = requests.post(url, params=payload, headers=headers)
+        result = r.json()
+        if "trans_result" in result and "dst" in result["trans_result"][0]:
+            return result["trans_result"][0]["dst"]
+    except Exception as e:
+        print(e)
+        return translate_res
+
+def design(img_url, normal_param_str,control_param_str):
+    try:
+        normal_param = json.loads(normal_param_str)
+        control_param = json.loads(control_param_str)
+    except Exception as e:
+        print(e)
+
+    prompt, n_prompt = "", ""
+    sampler_index = "DPM++ 2M Karras"
+    if "prompt" in normal_param:
+        prompt = normal_param["prompt"]
+    if "a_prompt" in normal_param:
+        a_prompt = " " + translate(normal_param["a_prompt"])
+        prompt += a_prompt
+    if "n_prompt" in normal_param:
+        n_prompt = normal_param["n_prompt"]
+    if "sampler_index" in normal_param:
+        sampler_index = normal_param["sampler_index"]
+
+
+    control_model = "control_v11f1p_sd15_depth_fp16 [4b72d323]"
+    control_resize_mode = "Crop and Resize"
+    control_module = "invert"
+    weight = 0.8
+    if "control_model" in control_param:
+        control_model = control_param["model"]
+    if "module" in control_param:
+        control_module = control_param["module"]
+    if "resize_mode" in control_param:
+        control_resize_mode = control_param["resize_mode"]
+    if "weight" in control_param:
+        weight = control_param["weight"]
+
     # create API client with custom host, port
-    api = webuiapi.WebUIApi(host='127.0.0.1', port=7860)
-    # api = webuiapi.WebUIApi(sampler='Euler a', steps=20)
+    api = webuiapi.WebUIApi(host='101.43.28.24', port=7860)
+
 
     t1 = time.time()
     picture_name = img_url.split('/')[-1]  # 提取图片url后缀
     reponse = requests.get(img_url)
-    with open(ORIGIN_FILE_PATH + '/' + picture_name, 'wb') as f:
+    with open(ORIGIN_FILE_PATH + picture_name, 'wb') as f:
         f.write(reponse.content)
-    img = Image.open(ORIGIN_FILE_PATH + '/' + picture_name)
-    unit1 = webuiapi.ControlNetUnit(input_image=img, module='canny', model='control_sd15_canny [fef5e48e]')
-    result = api.img2img(images=[img],
-                         resize_mode=0,
-                         denoising_strength=0.75,
-                         mask_blur=4,
-                         inpainting_fill=0,
-                         inpaint_full_res=False,
-                         inpaint_full_res_padding=0,
-                         inpainting_mask_invert=False,
-                         styles=[],
-                         subseed=-1,
-                         subseed_strength=0,
-                         seed_resize_from_h=-1,
-                         seed_resize_from_w=-1,
-                         batch_size=1,
+    img_url = ORIGIN_FILE_PATH + picture_name
+    img = Image.open(img_url)
+
+    unit1 = webuiapi.ControlNetUnit(input_image=img, module=control_module, model=control_model,
+                                    weight=float(weight), resize_mode=control_resize_mode, pixel_perfect="true")
+
+    result = api.txt2img(batch_size=1,
                          n_iter=4,
                          steps=20,
                          cfg_scale=7,
@@ -56,29 +118,27 @@ def design(img_url, prompt):
                          s_tmin=0,
                          s_noise=1,
                          override_settings={},
-                         sampler_index="Euler a",# "DPM++ SDE Karras",
-                         include_init_images=False,
-                         prompt="((%s)),best quality, extremely detailed, photo from Pinterest, interior,"
-                                " cinematic photo, ultra-detailed, ultra-realistic, award-winning" % (prompt),
-                         negative_prompt="longbody, lowres, bad anatomy, bad hands, missing fingers, extra digit, fewer digits, cropped, worst quality, low quality,ugly,poorly designed,amateur,bad bad proportions",
+                         sampler_index=sampler_index,#"DPM++ 2M Karras",
+                         prompt= prompt,
+                         negative_prompt= n_prompt,
                          width=512,
-                         height=512,
-                         seed=-1,controlnet_units=[unit1])
-    #print(result.images)
+                         height=724,controlnet_units=[unit1])
+
     res_img = result.images
     img_list = []
-    for tmp_img in res_img:
+    for tmp_img in res_img[0:-1]:
         des_img = '{}.png'.format(uuid.uuid4())
         tmp_img.save(FILE_PATH + str(des_img))
         res, des_img_url = upload_img(des_img)
         if res:
             img_list.append("https://" + des_img_url)
+            os.remove(FILE_PATH + str(des_img))
+
         else:
-            print("上传七牛云失败，文件名：", tmp_img)
+            print("上传七牛云失败，文件名：", des_img)
 
     print("cost time:", int(time.time() - t1))
     return img_list
-
 
 def upload_img(file_name):
     """
@@ -104,40 +164,45 @@ def upload_img(file_name):
 
 def task(num):
     while True:
-        time.sleep(2)
-        task_request = requests.request("GET", task_url, headers=headers)
-        response = json.loads(task_request.text)
-        res = True
-        if response["code"] == 200:
-            task = response["data"]
-            if task is not None:
-                image = task["image"]
-                prompt = task["prompt"]
-                print(image, prompt)
-                # 调用画图
-                res_img_list = design(task['image'], prompt)
-                """
-                for i in range(2):
-                    t = Thread(target=task, args=(i,))
-                    t.start()
-                    time.sleep(2)
-                """
-                # 上传七牛云并且更新数据库
-                if res:
-                    task['status'] = 2
-                    task['res_img2'] = ','.join(res_img_list)
-                else:
-                    task['status'] = 1
-                update_response = requests.request("POST", update_task_url, json=task, headers=headers)
-                print("update_task:", update_response)
-        # print(num, "--->", res)
+        try:
+            time.sleep(2)
+            task_request = requests.request("GET", task_url, headers=headers)
+            response = json.loads(task_request.text)
+            res = True
+            if response["code"] == 200:
+                task = response["data"]
+                if task is not None:
+                    image = task["image"]
+                    normal_param = task["normal_param"]
+                    control_param = task["control_param"]
+                    print(image, normal_param,control_param)
+                    if image!= None and image!="null":
+                        # 调用画图
+                        res_img_list = design(task['image'],normal_param,control_param)
+                        if len(res_img_list) > 0 :
+                            # 上传七牛云并且更新数据库
+                            if res:
+                                task['status'] = 2
+                                task['res_img2'] = ','.join(res_img_list)
+                            else:
+                                task['status'] = 1
+                            update_response = requests.request("POST", update_task_url, json=task, headers=headers)
+                            print("update_task:", update_response)
+                # print(num, "--->", res)
+        except Exception as e:
+            print(e)
 
-    dbtool.close_connect()
+
 
 
 if __name__ == "__main__":
-    for i in range(2):
+    task(1)
+    """
+    for i in range(1):
         t = Thread(target=task, args=(i,))
         t.start()
         time.sleep(2)
+    """
+
+
 

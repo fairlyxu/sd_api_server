@@ -41,9 +41,11 @@ class MysqlTool:
         # 使用cursor()方法获取操作游标
         cursor = self.connect.cursor(cursor=pymysql.cursors.DictCursor)
         try:
-            cursor.execute("select * from %s where status=%d" % (self.dbname, status))
+            sql= "select * from %s where status=%d" % (self.dbname, status)
+            #print("###"*10,sql)
+            cursor.execute(sql)
             res = cursor.fetchone()
-            print("get_task_by_status 查询成功！！！！", res)
+            #print("get_task_by_status 查询成功！！！！", res)
             if res:
                 return res
         except Exception as e:
@@ -56,13 +58,13 @@ class MysqlTool:
     def create_task(self, obj):
         # 使用cursor()方法获取操作游标
         cursor = self.connect.cursor()
-        print("obj:", obj)
+        #print("obj:", obj)
 
         # SQL 插入语句
         sql = """INSERT INTO SD_TASK(requestid,image, prompt, a_prompt, n_prompt,status)
                  VALUES('%s', '%s','%s', '%s', '%s',1)""" % (
             obj['requestid'], obj['image'], obj['prompt'], obj['a_prompt'], obj['n_prompt'])
-        print(sql)
+        #print(sql)
         try:
             # 执行sql语句
             cursor.execute(sql)
@@ -76,12 +78,12 @@ class MysqlTool:
     def create_task_v2(self, obj):
         # 使用cursor()方法获取操作游标
         cursor = self.connect.cursor()
-        print("obj:", obj)
+        #print("obj:", obj)
 
         # SQL 插入语句
         sql = """INSERT INTO %s (requestid,image, normal_param, control_param,status)
                     VALUES('%s', '%s','%s', '%s',1)""" % (self.dbname, obj['requestid'], obj['image'], obj['normal_param'], obj['control_param'])
-        print(sql)
+        #print(sql)
         try:
             # 执行sql语句
             cursor.execute(sql)
@@ -104,14 +106,16 @@ class MysqlTool:
         # 使用cursor()方法获取操作游标
         cursor = self.connect.cursor()
         sql_con = 'status = %d ' %(obj['status'])
+        print("**"*20,sql_con)
         if ('res_img1' in obj and obj['res_img1'] is not None):
             sql_con += ", res_img1 = '" + obj['res_img1'] + "'"
         if ('res_img2' in obj and obj['res_img2'] is not None):
             sql_con += ", res_img2 = '" + obj['res_img2'] + "'"
-
+        #print("@@"*20,sql_con)
         # SQL 更新语句
-        sql = "UPDATE %s SET " + sql_con + " WHERE requestid = '%s'" % (self.dbname,obj['requestid'])
-
+        sql = "UPDATE " + self.dbname  +  " SET " + sql_con + " WHERE requestid = '%s'" %(obj['requestid'])
+        #sql = "UPDATE '%s' SET " + sql_con + " WHERE requestid = '%s'" % (self.dbname,obj['requestid'])
+        print("update sql: ",sql)
         try:
             # 执行SQL语句
             cursor.execute(sql)

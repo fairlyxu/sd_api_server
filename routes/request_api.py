@@ -1,5 +1,6 @@
 
 import pymysql
+import time
 from flask import jsonify, abort, request, Blueprint
 from tool.mysql_tool import MysqlTool
 from dbutils.pooled_db import PooledDB
@@ -48,11 +49,12 @@ def generate():
         if (obj is None):
             new_task = {}
             new_task["requestid"] = data.get('requestid')
-            new_task["image"] = data.get('input').get('image')
-            new_task["prompt"] = data.get('input').get('prompt')
+            new_task["image"] = data.get('input').get('image') #data.get('image')
+            new_task["prompt"] = data.get('input').get('prompt')#data.get('','')
             new_task["a_prompt"] = data.get('input').get('a_prompt','')
             new_task["n_prompt"] = data.get('input').get('n_prompt', '')
             dbtool.create_task(new_task)
+            time.sleep(5)
             tmp_obj = dbtool.get_task_by_requestid(data.get('requestid'))
             obj = tmp_obj
 
