@@ -4,3 +4,7 @@ __pycache__
 model/__pycache__
 routes/__pycache__
 .vscode
+.idea/
+client/.qiniu_pythonsdk_hostscache.json
+/client/origin/
+/client/result/

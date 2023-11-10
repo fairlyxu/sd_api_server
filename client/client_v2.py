@@ -65,23 +65,35 @@ def design(img_url, normal_param_str,control_param_str):
     except Exception as e:
         print(e)
 
-    prompt, n_prompt = "", ""
+    prompt, n_prompt,a_prompt = "", "", ""
     sampler_index = "DPM++ 2M Karras"
+    size_width = 512
+    size_height = 720
+    steps = 20
     if "prompt" in normal_param:
         prompt = normal_param["prompt"]
     if "a_prompt" in normal_param:
-        a_prompt = " " + translate(normal_param["a_prompt"])
-        prompt += a_prompt
+        translate_res =  translate(normal_param["a_prompt"])
+        if translate_res!=None:
+            a_prompt = " " + translate_res
     if "n_prompt" in normal_param:
         n_prompt = normal_param["n_prompt"]
     if "sampler_index" in normal_param:
         sampler_index = normal_param["sampler_index"]
+    if "size_width" in normal_param:
+        size_width = int(normal_param["size_width"])
+    if "size_width" in normal_param:
+        size_height = int(normal_param["size_height"])
+    if "step" in normal_param:
+        step = int(normal_param["step"])
 
 
     control_model = "control_v11f1p_sd15_depth_fp16 [4b72d323]"
     control_resize_mode = "Crop and Resize"
     control_module = "invert"
     weight = 0.8
+    guidance_start = 0.0,
+    guidance_end = 1.0,
     if "control_model" in control_param:
         control_model = control_param["model"]
     if "module" in control_param:
@@ -90,6 +102,17 @@ def design(img_url, normal_param_str,control_param_str):
         control_resize_mode = control_param["resize_mode"]
     if "weight" in control_param:
         weight = control_param["weight"]
+    if "guidance_start" in control_param:
+        guidance_start = float(control_param["guidance_start"])
+    if "guidance_end" in control_param:
+        guidance_end = float(control_param["guidance_end"])
+
+
+    """
+      normal_param: {"sampler_index":"DPM++ 2M Karra","prompt":"mas   ","a_prompt":" ","n_prompt":"  digit, fewer digits, cropped, worst quality, low quality, normal quality,",
+      "clip":2,"steps":20,"size_width":512,"size_height":720}
+      control_param: {"module":"invert","model":"control_v11f1p_sd15_depth_fp16 [4b72d323]","weight":"0.8","guidance_start":0,"guidance_end":1}
+      """
 
     # create API client with custom host, port
     api = webuiapi.WebUIApi(host='101.43.28.24', port=7860)
@@ -104,11 +127,14 @@ def design(img_url, normal_param_str,control_param_str):
     img = Image.open(img_url)
 
     unit1 = webuiapi.ControlNetUnit(input_image=img, module=control_module, model=control_model,
+                                    guidance_start=guidance_start, guidance_end=guidance_end,
                                     weight=float(weight), resize_mode=control_resize_mode, pixel_perfect="true")
+
+
 
     result = api.txt2img(batch_size=1,
                          n_iter=4,
-                         steps=20,
+                         steps=steps,
                          cfg_scale=7,
                          restore_faces=False,
                          tiling=False,
@@ -119,10 +145,10 @@ def design(img_url, normal_param_str,control_param_str):
                          s_noise=1,
                          override_settings={},
                          sampler_index=sampler_index,#"DPM++ 2M Karras",
-                         prompt= prompt,
-                         negative_prompt= n_prompt,
-                         width=512,
-                         height=724,controlnet_units=[unit1])
+                         prompt=prompt + a_prompt,
+                         negative_prompt=n_prompt,
+                         width=size_width,
+                         height=size_height,controlnet_units=[unit1])
 
     res_img = result.images
     img_list = []
@@ -164,8 +190,8 @@ def upload_img(file_name):
 
 def task(num):
     while True:
-        try:
-            time.sleep(2)
+        #try:
+            #time.sleep(2)
             task_request = requests.request("GET", task_url, headers=headers)
             response = json.loads(task_request.text)
             res = True
@@ -189,8 +215,8 @@ def task(num):
                             update_response = requests.request("POST", update_task_url, json=task, headers=headers)
                             print("update_task:", update_response)
                 # print(num, "--->", res)
-        except Exception as e:
-            print(e)
+        #except Exception as e:
+            #print(e)
 
 
 
@@ -203,6 +229,3 @@ if __name__ == "__main__":
         t.start()
         time.sleep(2)
     """
-
-
-
