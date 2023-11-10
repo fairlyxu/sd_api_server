@@ -58,7 +58,7 @@ def translate(query):
         print(e)
         return translate_res
 
-def design(img_url, normal_param ,control_param ):
+def design(img_url, normal_param ,control_param ,is_save=False):
 
 
     prompt, n_prompt,a_prompt = "", "", ""
@@ -91,7 +91,7 @@ def design(img_url, normal_param ,control_param ):
     guidance_start = 0.0,
     guidance_end = 1.0,
 
-    if "control_model" in control_param:
+    if "model" in control_param:
         control_model = html.unescape(control_param["model"])
     if "module" in control_param:
         control_module = html.unescape(control_param["module"])
@@ -104,16 +104,8 @@ def design(img_url, normal_param ,control_param ):
     if "guidance_end" in control_param:
         guidance_end = float(control_param["guidance_end"])
 
-
-    """
-      normal_param: {"sampler_index":"DPM++ 2M Karra","prompt":"mas   ","a_prompt":" ","n_prompt":"  digit, fewer digits, cropped, worst quality, low quality, normal quality,",
-      "clip":2,"steps":20,"size_width":512,"size_height":720}
-      control_param: {"module":"invert","model":"control_v11f1p_sd15_depth_fp16 [4b72d323]","weight":"0.8","guidance_start":0,"guidance_end":1}
-      """
-
     # create API client with custom host, port
     api = webuiapi.WebUIApi(host='101.43.28.24', port=7860)
-
 
     t1 = time.time()
     picture_name = img_url.split('/')[-1]  # 提取图片url后缀
@@ -153,8 +145,8 @@ def design(img_url, normal_param ,control_param ):
         res, des_img_url = upload_img(des_img)
         if res:
             img_list.append("https://" + des_img_url)
-            os.remove(FILE_PATH + str(des_img))
-
+            if is_save:
+                os.remove(FILE_PATH + str(des_img))
         else:
             print("上传七牛云失败，文件名：", des_img)
 
@@ -185,26 +177,27 @@ def upload_img(file_name):
 
 
 def ee_test_ee():
-    image = "https://qiniu.aigcute.com/o_1hdih8it75796pdf7c199ul8e9.jpg"
-    normal_param = {"sampler_index": "DPM++ 2M Karra",
-                    "prompt": "Wandering Earth,Planetary Accelerator,Space Background,Cybertron Similar,Dreams,Illusions,Bold Colors,High Quality,Very Detailed,Master Masterpiece Award-winning,Bertil Nilsson,",
-                    "a_prompt": "",
-                    "n_prompt": "NSFW,EasyNegative, lowres, bad anatomy, bad hands, text, error, missing fingers, extra digit, fewer digits, cropped, worst quality, low quality, normal quality, jpeg artifacts, signature, watermark, username, blurry",
-                    "clip": "2", "steps": "20", "size_width": "512", "size_height": "720"}
-    control_param = {"module": "invert (from white bg &amp; black line)",
-                     "model": "control_v11p_sd15_seg_fp16 [ab613144]", "weight": "0.8", "guidance_start": 0,
-                     "guidance_end": "1"}
+
+    image = "https://qiniu.aigcute.com/o_1hesnlce41c7j1nn9kk6d2l1goh9.jpg"
+    normal_param =    {"sampler_index": "DPM++ 2M Karra",
+     "prompt": "masterpiece,best quality,Sunshine, baby products, baby toys                        ", "a_prompt": "",
+     "n_prompt": "NSFW,human,baby,EasyNegative,lowres,bad anatomy,bad hands,text,error,missing fingers,extra digit,fewer digits,cropped,worst quality,low quality,normal quality,jpeg artifacts,signature,watermark,username,blurry,human,wood",
+     "clip": "2", "steps": "20", "size_width": "512", "size_height": "720"}
+    control_param =  {"module": "invert (from white bg & black line)", "model":
+        "control_v11p_sd15_seg_fp16 [ab613144]",
+     "weight": "0.8", "guidance_start": 0, "guidance_end": "1"}
+
 
     print(image, normal_param, control_param)
     if image != None and image != "null":
         # 调用画图
-        res_img_list = design(image, normal_param, control_param)
+        res_img_list = design(image, normal_param, control_param,is_save=True)
         print(res_img_list)
 
 
 def task(num):
     while True:
-        #try:
+        try:
             #time.sleep(2)
             task_request = requests.request("GET", task_url, headers=headers)
             response = json.loads(task_request.text)
@@ -229,13 +222,14 @@ def task(num):
                             update_response = requests.request("POST", update_task_url, json=task, headers=headers)
                             print("update_task:", update_response)
                 # print(num, "--->", res)
-        #except Exception as e:
-            #print(e)
+        except Exception as e:
+            print(e)
 
 
 
 
 if __name__ == "__main__":
+    #ee_test_ee()
     task(1)
     """
     for i in range(1):
