@@ -59,8 +59,6 @@ def translate(query):
         return translate_res
 
 def design(img_url, normal_param ,control_param ,is_save=False):
-
-
     prompt, n_prompt,a_prompt = "", "", ""
     sampler_index = "DPM++ 2M Karras"
     size_width = 512
@@ -145,7 +143,7 @@ def design(img_url, normal_param ,control_param ,is_save=False):
         res, des_img_url = upload_img(des_img)
         if res:
             img_list.append("https://" + des_img_url)
-            if is_save:
+            if not is_save:
                 os.remove(FILE_PATH + str(des_img))
         else:
             print("上传七牛云失败，文件名：", des_img)
