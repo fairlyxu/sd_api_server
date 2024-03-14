@@ -212,34 +212,34 @@ def ee_test_ee():
 
 def task(num):
     while True:
-        # try:
-        # time.sleep(2)
-        task_request = requests.request("GET", task_url, headers=headers)
-        response = json.loads(task_request.text)
-        res = True
-        if response["code"] == 200:
-            task = response["data"]
-            if task is not None:
-                image = task["image"]
-                normal_param = task["normal_param"]
-                control_param = task["control_param"]
-                pid = task["pid"]
-                print(image, normal_param, control_param)
-                if image != None and image != "null":
-                    # 调用画图
-                    res_img_list = design(image, json.loads(normal_param), json.loads(control_param), pid)
-                    if len(res_img_list) > 0:
-                        # 上传七牛云并且更新数据库
-                        if res:
-                            task['status'] = 2
-                            task['res_img2'] = ','.join(res_img_list)
-                        else:
-                            task['status'] = 1
-                        update_response = requests.request("POST", update_task_url, json=task, headers=headers)
-                        print("update_task:", update_response)
-            # print(num, "--->", res)
-    # except Exception as e:
-    # print(e)
+        try:
+            # time.sleep(2)
+            task_request = requests.request("GET", task_url, headers=headers)
+            response = json.loads(task_request.text)
+            res = True
+            if response["code"] == 200:
+                task = response["data"]
+                if task is not None:
+                    image = task["image"]
+                    normal_param = task["normal_param"]
+                    control_param = task["control_param"]
+                    pid = task["pid"]
+                    print(image, normal_param, control_param)
+                    if image != None and image != "null":
+                        # 调用画图
+                        res_img_list = design(image, json.loads(normal_param), json.loads(control_param), pid)
+                        if len(res_img_list) > 0:
+                            # 上传七牛云并且更新数据库
+                            if res:
+                                task['status'] = 2
+                                task['res_img2'] = ','.join(res_img_list)
+                            else:
+                                task['status'] = 1
+                            update_response = requests.request("POST", update_task_url, json=task, headers=headers)
+                            print("update_task:", update_response)
+                # print(num, "--->", res)
+        except Exception as e:
+            print(e)
 
 
 if __name__ == "__main__":
