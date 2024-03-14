@@ -12,6 +12,10 @@ import json
 from hashlib import md5
 import html
 
+AD_CONFIG = {1: ["https://imggc.aigcute.com/8f00b204e9800998.jpeg",
+                 "https://imggc.aigcute.com/87d72c88ccfa4190.jpeg",
+                 "https://imggc.aigcute.com/0c2a049c8735a640.jpeg"]}
+
 BUCKED_NAME = "aigcute"
 FILE_PATH = './result/'
 DOMAIN_NAME = 'qiniu.aigcute.com'
@@ -24,12 +28,12 @@ headers = {
 }
 
 
-
 def translate(query):
     def make_md5(s, encoding='utf-8'):
         return md5(s.encode(encoding)).hexdigest()
+
     translate_res = ""
-    if query == None or query =="" or query =="null"  or len(query) < 1:
+    if query == None or query == "" or query == "null" or len(query) < 1:
         return translate_res
     # Set your own appid/appkey.
     appid = '20231013001845675'
@@ -48,7 +52,7 @@ def translate(query):
     headers = {'Content-Type': 'application/x-www-form-urlencoded'}
     payload = {'appid': appid, 'q': query, 'from': from_lang, 'to': to_lang, 'salt': salt, 'sign': sign}
 
-    try :
+    try:
         # Send request
         r = requests.post(url, params=payload, headers=headers)
         result = r.json()
@@ -58,17 +62,23 @@ def translate(query):
         print(e)
         return translate_res
 
-def design(img_url, normal_param ,control_param ,is_save=False):
-    prompt, n_prompt,a_prompt = "", "", ""
+
+def design(img_url, normal_param, control_param, pid=0):
+    if pid != 0:
+        ad_img_list = AD_CONFIG.get(pid, []).split(",")
+        num = 4 - len(ad_img_list)
+
+    prompt, n_prompt, a_prompt = "", "", ""
     sampler_index = "DPM++ 2M Karras"
     size_width = 512
     size_height = 720
     steps = 20
+
     if "prompt" in normal_param:
         prompt = html.unescape(normal_param["prompt"])
     if "a_prompt" in normal_param:
         translate_res = translate(normal_param["a_prompt"])
-        if translate_res!=None:
+        if translate_res != None:
             a_prompt = " " + translate_res
     if "n_prompt" in normal_param:
         n_prompt = html.unescape(normal_param["n_prompt"])
@@ -81,7 +91,6 @@ def design(img_url, normal_param ,control_param ,is_save=False):
     if "step" in normal_param:
         steps = int(normal_param["step"])
 
-
     control_model = "control_v11f1p_sd15_depth_fp16 [4b72d323]"
     control_resize_mode = "Crop and Resize"
     control_module = "invert"
@@ -89,7 +98,7 @@ def design(img_url, normal_param ,control_param ,is_save=False):
     guidance_start = 0.0,
     guidance_end = 1.0,
 
-    if "model" in control_param:
+    if "control_model" in control_param:
         control_model = html.unescape(control_param["model"])
     if "module" in control_param:
         control_module = html.unescape(control_param["module"])
@@ -101,6 +110,12 @@ def design(img_url, normal_param ,control_param ,is_save=False):
         guidance_start = float(control_param["guidance_start"])
     if "guidance_end" in control_param:
         guidance_end = float(control_param["guidance_end"])
+
+    """
+      normal_param: {"sampler_index":"DPM++ 2M Karra","prompt":"mas   ","a_prompt":" ","n_prompt":"  digit, fewer digits, cropped, worst quality, low quality, normal quality,",
+      "clip":2,"steps":20,"size_width":512,"size_height":720}
+      control_param: {"module":"invert","model":"control_v11f1p_sd15_depth_fp16 [4b72d323]","weight":"0.8","guidance_start":0,"guidance_end":1}
+      """
 
     # create API client with custom host, port
     api = webuiapi.WebUIApi(host='101.43.28.24', port=7860)
@@ -118,7 +133,7 @@ def design(img_url, normal_param ,control_param ,is_save=False):
                                     weight=float(weight), resize_mode=control_resize_mode, pixel_perfect="true")
 
     result = api.txt2img(batch_size=1,
-                         n_iter=4,
+                         n_iter=num,
                          steps=steps,
                          cfg_scale=7,
                          restore_faces=False,
@@ -129,27 +144,31 @@ def design(img_url, normal_param ,control_param ,is_save=False):
                          s_tmin=0,
                          s_noise=1,
                          override_settings={},
-                         sampler_index=sampler_index,#"DPM++ 2M Karras",
+                         sampler_index=sampler_index,  # "DPM++ 2M Karras",
                          prompt=prompt + a_prompt,
                          negative_prompt=n_prompt,
                          width=size_width,
-                         height=size_height,controlnet_units=[unit1])
+                         height=size_height, controlnet_units=[unit1])
 
     res_img = result.images
     img_list = []
-    for tmp_img in res_img:#[0:-1]:
+    for tmp_img in res_img:  # [0:-1]:
         des_img = '{}.png'.format(uuid.uuid4())
         tmp_img.save(FILE_PATH + str(des_img))
         res, des_img_url = upload_img(des_img)
         if res:
             img_list.append("https://" + des_img_url)
-            if not is_save:
-                os.remove(FILE_PATH + str(des_img))
+            os.remove(FILE_PATH + str(des_img))
+
         else:
             print("上传七牛云失败，文件名：", des_img)
 
+    if len(img_list) < 4 and pid !=0 :
+        img_list += ad_img_list
+
     print("cost time:", int(time.time() - t1))
     return img_list
+
 
 def upload_img(file_name):
     """
@@ -173,61 +192,57 @@ def upload_img(file_name):
         return False, None
 
 
-
 def ee_test_ee():
-
-    image = "https://qiniu.aigcute.com/o_1hesnlce41c7j1nn9kk6d2l1goh9.jpg"
-    normal_param =    {"sampler_index": "DPM++ 2M Karra",
-     "prompt": "masterpiece,best quality,Sunshine, baby products, baby toys                        ", "a_prompt": "",
-     "n_prompt": "NSFW,human,baby,EasyNegative,lowres,bad anatomy,bad hands,text,error,missing fingers,extra digit,fewer digits,cropped,worst quality,low quality,normal quality,jpeg artifacts,signature,watermark,username,blurry,human,wood",
-     "clip": "2", "steps": "20", "size_width": "512", "size_height": "720"}
-    control_param =  {"module": "invert (from white bg & black line)", "model":
-        "control_v11p_sd15_seg_fp16 [ab613144]",
-     "weight": "0.8", "guidance_start": 0, "guidance_end": "1"}
-
+    image = "https://qiniu.aigcute.com/o_1hdih8it75796pdf7c199ul8e9.jpg"
+    normal_param = {"sampler_index": "DPM++ 2M Karra",
+                    "prompt": "Wandering Earth,Planetary Accelerator,Space Background,Cybertron Similar,Dreams,Illusions,Bold Colors,High Quality,Very Detailed,Master Masterpiece Award-winning,Bertil Nilsson,",
+                    "a_prompt": "",
+                    "n_prompt": "NSFW,EasyNegative, lowres, bad anatomy, bad hands, text, error, missing fingers, extra digit, fewer digits, cropped, worst quality, low quality, normal quality, jpeg artifacts, signature, watermark, username, blurry",
+                    "clip": "2", "steps": "20", "size_width": "512", "size_height": "720"}
+    control_param = {"module": "invert (from white bg &amp; black line)",
+                     "model": "control_v11p_sd15_seg_fp16 [ab613144]", "weight": "0.8", "guidance_start": 0,
+                     "guidance_end": "1"}
 
     print(image, normal_param, control_param)
     if image != None and image != "null":
         # 调用画图
-        res_img_list = design(image, normal_param, control_param,is_save=True)
+        res_img_list = design(image, normal_param, control_param)
         print(res_img_list)
 
 
 def task(num):
     while True:
-        try:
-            #time.sleep(2)
-            task_request = requests.request("GET", task_url, headers=headers)
-            response = json.loads(task_request.text)
-            res = True
-            if response["code"] == 200:
-                task = response["data"]
-                if task is not None:
-                    image = task["image"]
-                    normal_param = task["normal_param"]
-                    control_param = task["control_param"]
-                    print(image, normal_param,control_param)
-                    if image!= None and image!="null":
-                        # 调用画图
-                        res_img_list = design(image,json.loads(normal_param),json.loads(control_param))
-                        if len(res_img_list) > 0 :
-                            # 上传七牛云并且更新数据库
-                            if res:
-                                task['status'] = 2
-                                task['res_img2'] = ','.join(res_img_list)
-                            else:
-                                task['status'] = 1
-                            update_response = requests.request("POST", update_task_url, json=task, headers=headers)
-                            print("update_task:", update_response)
-                # print(num, "--->", res)
-        except Exception as e:
-            print(e)
-
-
+        # try:
+        # time.sleep(2)
+        task_request = requests.request("GET", task_url, headers=headers)
+        response = json.loads(task_request.text)
+        res = True
+        if response["code"] == 200:
+            task = response["data"]
+            if task is not None:
+                image = task["image"]
+                normal_param = task["normal_param"]
+                control_param = task["control_param"]
+                pid = task["pid"]
+                print(image, normal_param, control_param)
+                if image != None and image != "null":
+                    # 调用画图
+                    res_img_list = design(image, json.loads(normal_param), json.loads(control_param), pid)
+                    if len(res_img_list) > 0:
+                        # 上传七牛云并且更新数据库
+                        if res:
+                            task['status'] = 2
+                            task['res_img2'] = ','.join(res_img_list)
+                        else:
+                            task['status'] = 1
+                        update_response = requests.request("POST", update_task_url, json=task, headers=headers)
+                        print("update_task:", update_response)
+            # print(num, "--->", res)
+    # except Exception as e:
+    # print(e)
 
 
 if __name__ == "__main__":
-    #ee_test_ee()
     task(1)
     """
     for i in range(1):
@@ -235,4 +250,3 @@ if __name__ == "__main__":
         t.start()
         time.sleep(2)
     """
-
