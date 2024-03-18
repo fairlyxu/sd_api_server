@@ -63,16 +63,25 @@ def translate(query):
         return translate_res
 
 
-def design(img_url, normal_param, control_param, pid=0):
-    if pid != 0:
-        ad_img_list = AD_CONFIG.get(pid, []).split(",")
-        num = 4 - len(ad_img_list)
+def design(img_url, normal_param, control_param):
+
+
 
     prompt, n_prompt, a_prompt = "", "", ""
     sampler_index = "DPM++ 2M Karras"
     size_width = 512
     size_height = 720
     steps = 20
+    num = 4
+    pid = 0
+
+    if "pid" in normal_param:
+        pid = int(normal_param["pid"])
+
+    if pid != 0:
+        ad_img_list = AD_CONFIG.get(pid, []).split(",")
+        num = 4 - len(ad_img_list)
+
 
     if "prompt" in normal_param:
         prompt = html.unescape(normal_param["prompt"])
@@ -118,7 +127,9 @@ def design(img_url, normal_param, control_param, pid=0):
       """
 
     # create API client with custom host, port
-    api = webuiapi.WebUIApi(host='101.43.28.24', port=7860)
+    t_host = '101.43.28.24'
+    t_port = 6061
+    api = webuiapi.WebUIApi(host=t_host, port=t_port)
 
     t1 = time.time()
     picture_name = img_url.split('/')[-1]  # 提取图片url后缀
@@ -219,15 +230,15 @@ def task(num):
             res = True
             if response["code"] == 200:
                 task = response["data"]
+                print("TASK:",task)
                 if task is not None:
                     image = task["image"]
                     normal_param = task["normal_param"]
-                    control_param = task["control_param"]
-                    pid = task["pid"]
-                    print(image, normal_param, control_param)
+                    control_param = task["control_param"] 
+                    print(image, normal_param, control_param )
                     if image != None and image != "null":
                         # 调用画图
-                        res_img_list = design(image, json.loads(normal_param), json.loads(control_param), pid)
+                        res_img_list = design(image, json.loads(normal_param), json.loads(control_param))
                         if len(res_img_list) > 0:
                             # 上传七牛云并且更新数据库
                             if res:
@@ -239,7 +250,7 @@ def task(num):
                             print("update_task:", update_response)
                 # print(num, "--->", res)
         except Exception as e:
-            print(e)
+            print("~~~" ,e)
 
 
 if __name__ == "__main__":
