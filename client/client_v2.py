@@ -75,11 +75,11 @@ def design(img_url, normal_param, control_param):
     num = 4
     pid = 0
 
-    if "pid" in normal_param:
+    if "pid" in normal_param and normal_param["pid"] is not  None:
         pid = int(normal_param["pid"])
 
     if pid != 0:
-        ad_img_list = AD_CONFIG.get(pid, []).split(",")
+        ad_img_list = AD_CONFIG.get(pid, [])
         num = 4 - len(ad_img_list)
 
 
@@ -100,9 +100,9 @@ def design(img_url, normal_param, control_param):
     if "step" in normal_param:
         steps = int(normal_param["step"])
 
-    control_model = "control_v11f1p_sd15_depth_fp16 [4b72d323]"
+    control_model = "control_v11p_sd15_seg_fp16 [ab613144]"
     control_resize_mode = "Crop and Resize"
-    control_module = "invert"
+    control_module = "invert (from white bg & black line)"
     weight = 0.8
     guidance_start = 0.0,
     guidance_end = 1.0,
@@ -138,6 +138,8 @@ def design(img_url, normal_param, control_param):
         f.write(reponse.content)
     img_url = ORIGIN_FILE_PATH + picture_name
     img = Image.open(img_url)
+    print("control_module:",control_module)
+    print("control_model:", control_model)
 
     unit1 = webuiapi.ControlNetUnit(input_image=img, module=control_module, model=control_model,
                                     guidance_start=guidance_start, guidance_end=guidance_end,
@@ -163,7 +165,7 @@ def design(img_url, normal_param, control_param):
 
     res_img = result.images
     img_list = []
-    for tmp_img in res_img:  # [0:-1]:
+    for tmp_img in res_img[0:-1]:
         des_img = '{}.png'.format(uuid.uuid4())
         tmp_img.save(FILE_PATH + str(des_img))
         res, des_img_url = upload_img(des_img)
@@ -176,6 +178,8 @@ def design(img_url, normal_param, control_param):
 
     if len(img_list) < 4 and pid !=0 :
         img_list += ad_img_list
+
+    print(img_list)
 
     print("cost time:", int(time.time() - t1))
     return img_list
@@ -205,7 +209,7 @@ def upload_img(file_name):
 
 def ee_test_ee():
     image = "https://qiniu.aigcute.com/o_1hdih8it75796pdf7c199ul8e9.jpg"
-    normal_param = {"sampler_index": "DPM++ 2M Karra",
+    normal_param = {"pid":1,"sampler_index": "DPM++ 2M Karra",
                     "prompt": "Wandering Earth,Planetary Accelerator,Space Background,Cybertron Similar,Dreams,Illusions,Bold Colors,High Quality,Very Detailed,Master Masterpiece Award-winning,Bertil Nilsson,",
                     "a_prompt": "",
                     "n_prompt": "NSFW,EasyNegative, lowres, bad anatomy, bad hands, text, error, missing fingers, extra digit, fewer digits, cropped, worst quality, low quality, normal quality, jpeg artifacts, signature, watermark, username, blurry",
@@ -244,6 +248,7 @@ def task(num):
                             if res:
                                 task['status'] = 2
                                 task['res_img2'] = ','.join(res_img_list)
+                                print("~~~~~~,res_img_list",task['res_img2'] )
                             else:
                                 task['status'] = 1
                             update_response = requests.request("POST", update_task_url, json=task, headers=headers)
@@ -254,6 +259,7 @@ def task(num):
 
 
 if __name__ == "__main__":
+    #ee_test_ee()
     task(1)
     """
     for i in range(1):
